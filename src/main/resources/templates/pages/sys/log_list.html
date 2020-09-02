@@ -1,0 +1,269 @@
+<div class="row">
+	<div class="col-xs-12">
+		<div class="box">
+			<div class="box-header">
+				<h3 class="box-title">日志管理</h3>
+				<div class="box-tools">
+					<div class="input-group input-group-sm" style="width: 350px;">
+						<input type="text" name="table_search" id="searchNameId"
+							class="form-control pull-right" placeholder="用户名">
+
+						<div class="input-group-btn">
+							<button type="button" class="btn btn-default btn-search">
+                                <i class="fa fa-search"></i>
+							</button>
+							<button type="button" class="btn btn-default btn-delete">删除</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- /.box-header -->
+			<div class="box-body table-responsive no-padding">
+				<table class="table table-hover">
+					<thead>
+						<tr>
+						    <th><input type="checkbox" id="checkAll">全选</th>
+							<th>用户名</th>
+							<th>操作</th>
+							<th>请求方法</th>
+							<th>请求参数</th>
+							<th>IP</th>
+							<th>执行时长</th>
+						</tr>
+					</thead>
+					<tbody id="tbodyId">
+					    <tr>
+					       <td colspan="7">数据正在加载中...</td>
+					    </tr>
+					</tbody>
+				</table>
+			</div>
+			<div id="pageId" class="box-footer clearfix"
+			     th:insert="common/page.html::pageFragment" dm="100">
+			   <!--希望使用thymeleaf中th:insert元素将page.html内容插入到此位置 -->
+			</div>
+			<!-- /.box-body -->
+		</div>
+		<!-- /.box -->
+	</div>
+</div>
+<script type="text/javascript">
+     //JS中问题解决方案：debugger，console.log(),排除法
+    $(function(){
+    	//debugger
+    	//当日志列表页面加载完成以后，加载分页页面。
+        // $("#pageId").load("doPageUI",function(){//资源加载完成以后执行
+    	   //异步加载用户行为日志信息
+    	  // doGetObjects();
+        // });
+    	//上面写法的简化形式
+    	//$("#pageId").load("doPageUI",doGetObjects);//不要写成doGetObjects()
+    	 doGetObjects();
+    	//查询按钮事件注册
+    	 //on函数为jquery中的一个事件注册函数(推荐)
+    	 //on函数语法:$("选择器").on("事件","子元素选择器"[,数据],事件处理函数)
+    	 $(".input-group-btn")
+    	 .on("click",".btn-search",doQueryObjects)
+    	 .on("click",".btn-delete",doDeleteObjects);
+    	 //全选checkbox对象上的事件注册(一般与状态相关的事件会用change)
+    	 $("#checkAll").change(doChangeTableBodyCheckboxState);
+    	 //tbody中checkbox对象的事件注册
+    	 $("#tbodyId")
+    	 .on("change","input:checkbox",doChangeTableHeadCheckboxState)
+    });
+     //基于tbody中checkbox对象的状态修改thead中checkbox对象状态
+     function doChangeTableHeadCheckboxState(){
+        //1.获取tbody中checkbox对象的checked属性的值并进行逻辑与操作。
+        var flag=true;
+        $("#tbodyId input:checkbox")
+        .each(function(){
+        	flag=flag&&$(this).prop("checked");
+        })
+        //2.修改thead中checkbox对象的值。
+        $("#checkAll").prop("checked",flag);
+     }
+     //修改tbody中checkbox对象的状态
+     function doChangeTableBodyCheckboxState(){
+    	 //1.获取全选checkbox对象的checked属性值
+    	 //var flag=$(this).prop("checked")
+    	 var flag=$("#checkAll").prop("checked")
+    	 //2.设置tbody中checkbox对象的checked属性的值
+    	 $("#tbodyId input:checkbox").prop("checked",flag);
+     }
+     
+     //获取选中记录的id值并将其存储到数组
+     function doGetCheckedIds(){
+    	 var idArray=[];//new Array();
+    	 $("#tbodyId input:checkbox")
+    	 .each(function(){//each函数表示迭代
+    		 //$(this)代表input 类型为checkbox的对象
+    		 if($(this).prop("checked")){//选中则布尔表达式为true
+    			 idArray.push($(this).val())//将选中checkbox对象的值写入数组
+    		 }
+    	 });
+    	 return idArray;
+     }
+     //向服务端发送异步请求执行删除操作
+     function doDeleteObjects(){
+    	 //1.定义请求参数
+    	 //1.1获取用户选中记录的id值并将其存储到数组
+    	 var idArray=doGetCheckedIds();//[1,2,3,4,5]
+    	 console.log("idArray",idArray);
+    	 //1.2判定是否选中
+    	 if(!idArray||idArray.length==0){
+    		 alert("请先选择");
+    		 return;
+    	 }
+    	 //1.3给出提示确定删除吗
+    	 if(!confirm("确定删除吗"))return;
+    	 //1.4构建请求参数
+    	 var params={"ids":idArray.toString()};//{"ids":"1,2,3,4,5"}
+    	 console.log("delete.params",params);
+    	 //2.定义请求url
+    	 var url="log/doDeleteObjects";
+    	 //3.发送请求执行删除操作
+    	 $.post(url,params,function(result){
+    		 if(result.state==1){
+    			 alert(result.message);
+    			 //doGetObjects();//刷新，先这么写
+    			 doRefreshAfterDeleteOK();
+    		 }else{
+    			 alert(result.message);
+    		 }
+    	 })
+     }
+     //删除成功以后的刷新
+     function doRefreshAfterDeleteOK(){
+    	 //页码值减减操作(回到上一页)的需要满足的条件
+    	 //1)thead中checkbox的状态为全选
+    	 var allChecked=$("#checkAll").prop("checked");
+    	 //2)当前页码值是最后一页并且不是第一页
+    	 var pageCurrent=$("#pageId").data("pageCurrent");
+    	 var pageCount=$("#pageId").data("pageCount");
+    	 if(allChecked&&pageCurrent==pageCount&&pageCurrent>1){
+    		 pageCurrent--;
+    		 $("#pageId").data("pageCurrent",pageCurrent);
+    	 }
+    	 doGetObjects();
+     }
+     
+     //处理查询按钮事件
+     function doQueryObjects(){
+    	 //1.定义参数
+    	 $("#pageId").data("pageCurrent",1);//设置当前页码值
+    	 //2.定义请求url
+    	 //3.发送异步请求
+    	 doGetObjects();
+     }
+     
+    //开启ajax异步任务，按条件加载用户行为日志信息
+    function doGetObjects(){
+    	debugger
+    	//1.定义请求参数
+    	var pageCurrent=$("#pageId").data("pageCurrent");
+    	if(!pageCurrent)pageCurrent=1;//pageCurrent没有值时,设置默认值为1
+    	//1.1定义参数的方式1
+    	//var params="pageCurrent=1";
+    	//1.2定义参数的方式2
+    	var params={"pageCurrent":pageCurrent};
+    	//获取用户输入的用户名
+    	var uname=$("#searchNameId").val();
+    	//向json格式的js对象中动态添加key,value;
+    	if(uname)params.username=uname;//这里的key需要与服务端接收参数时使用的名字相同。
+    	console.log("params",params);
+    	//2.定义请求url
+    	var url="log/doFindPageObjects";
+    	//3.发送异步请求处理响应结果
+    	//$.getJSON(url,params,function(result){
+    		//doHandleQueryResponseResult(result);
+    	//});
+    	//如上方法的简写形式
+    	$.getJSON(url,params,doHandleQueryResponseResult);
+    	
+    	//getJSON函数内部的实现是如下形式
+    	/*$.ajax({
+    		url:url,
+    		dataType:"json",
+    		data:params,
+    		success:doHandleQueryResponseResult
+    	 });*/
+    	 
+    	//$.ajax底层实现
+    	/*
+    	var xhr=new XMLHttpRequest();
+    	xhr.onreadystatechange=function(){
+    	   if(xhr.readyState==4&&xhr.status==200){
+    		   doHandleQueryResponseResult(JSON.parse(xhr.responseText));
+    	   }
+    	};
+    	xhr.open("Get","log/doFindPageObjects?pageCurrent=1",true);
+    	xhr.send(null);
+    	*/
+    }
+    //处理查询结果
+    function doHandleQueryResponseResult(result){//result为json格式的js对象
+    	//console.log("result",result);
+    	//console.log("result.state",result.state);
+    	//console.log("result.data",result.data);//对应服务端的pageObject
+    	//console.log("result.data.records",result.data.records);//对应服务端查询到的用户日志
+    	if(result.state==1){//state==1表示是正常的响应数据
+    		//将result.data.records呈现在log_list.html的tbody位置
+    		doSetTableBodyRows(result.data.records);
+    		//将result.data中的分页信息呈现在page.html指定位置
+    		//作业：参考文档去实现，并尝试实现分页事件处理
+    		doSetPagination(result.data);//result.data对应服务端业务层的pageObject
+    		//更新thead中checkbox的值(目的在处理分页查询事件时假如有全选状态也随之更新)
+    		$("#checkAll").prop("checked",false);
+    	}else{
+    		//alert(result.message);
+    		doHandleQueryError(result.message);
+    	}
+    }
+    //处理查询失败的情况
+    function doHandleQueryError(msg){
+    	//设置tbody中的内容
+    	$("#tbodyId").html(`<tr><td colspan=7>${msg}</td></tr>`);
+    	//设置全选状态
+    	$("#checkAll").prop("checked",false);
+ 	   //1.初始化总记录数
+ 	    $(".rowCount").html("总记录数(0)");
+ 	   //2.初始化总页数
+ 	    $(".pageCount").html("总页数(0)");
+ 	   //3.初始化当前页
+ 	   //基于Jquery框架实现
+ 	    $(".pageCurrent").html("当前页(1)");
+    }
+    
+    //更新table对象的tbody位置的内容
+    function doSetTableBodyRows(records){
+    	//1.获得tbody对象并清空原有内容
+    	var tBody=$("#tbodyId");
+    	tBody.empty();
+    	//2.迭代records记录并将其追加到tbody中
+    	//方法1
+    	/*
+    	for(var i=0;i<records.legnth;i++){
+    		tBody.append(doCreateRows(records[i]));
+    	}
+    	*/
+    	//方法2：
+    	records.forEach((item)=>tBody.append(doCreateRows(item)));
+    }
+    //基于记录创建行(tr)对象
+    function doCreateRows(item){
+    	//debugger
+    	return `<tr>
+    	          <td><input type='checkbox' class='cBox' value=${item.id}></td>
+    	          <td>${item.username}</td>
+    	          <td>${item.operation}</td>
+    	          <td>${item.method}</td>
+    	          <td>${item.params}</td>
+    	          <td>${item.ip}</td>
+    	          <td>${item.time}</td>
+    	        </tr>`;
+    }
+</script>
+
+
+
+

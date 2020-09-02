@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  <mapper namespace="com.cy.pj.sys.dao.SysRoleDao">
+  
+     
+     <!-- 更新角色自身信息 -->
+      <update id="updateObject">
+         update sys_roles
+         set  name=#{name},
+              note=#{note},
+              modifiedTime=now(),
+              modifiedUser=#{modifiedUser}
+         where id=#{id}
+      </update>
+      
+   
+      <!-- resultMap是mybatis中用于实现高级映射的一个非常重要的元素，主要应用于
+                       自定义映射规则的设计，例如字段的自定义映射，表嵌套查询映射，表关联查询映射 -->
+      <resultMap type="com.cy.pj.sys.pojo.SysRoleMenu" id="sysRoleMenu">
+             <!-- id元素用于实现主键字段映射：尤其是当在再次基于主键值执行其它查询，
+                               建议将id主键值进行手动映射 -->
+             <id property="id" column="id"/>
+             <result property="name" column="name"/>
+             <result property="note" column="note"/>
+             <collection property="menuIds" 
+                         column="id"
+              select="com.cy.pj.sys.dao.SysRoleMenuDao.findMenuIdsByRoleId"/>
+      </resultMap>
+      <select id="findById" resultMap="sysRoleMenu">
+           select id,name,note
+           from sys_roles
+           where id=#{id}
+      </select>
+      
+      
+  
+      <!-- resultType 用于查询过程中的简单数据映射，比方说
+                       查询字段与pojo对象中的set方法匹配即可实现映射 -->
+       <!-- 方案1
+       <select id="findById" resultType="com.cy.pj.sys.pojo.SysRoleMenu">
+           select id,name,note
+           from sys_roles
+           where id=#{id}
+       </select>
+        -->
+       
+       <!-- 
+       useGeneratedKeys ：表示使用insert操作的自增主键值。
+       keyProperty 表示将自增主键值存储到参数对象SysRole的对应属性上。
+        -->
+       <insert id="insertObject"
+               parameterType="com.cy.pj.sys.pojo.SysRole"
+               useGeneratedKeys="true"
+               keyProperty="id">
+          insert into sys_roles
+          (name,note,createdTime,modifiedTime,createdUser,modifiedUser)
+          values
+          (#{name},#{note},now(),now(),#{createdUser},#{modifiedUser})
+       </insert>
+       
+       <!-- 通过sql标签提取sql中共性 -->
+       <sql id="queryWhereId">
+              from sys_roles
+              <if test="name!=null and name!=''">
+                 <where>
+                   name like concat("%",#{name},"%")
+                 </where>
+             </if>
+       </sql>
+       
+       <!-- 查询当前页记录总数 -->
+       <select id="findPageObjects" 
+               resultType="com.cy.pj.sys.pojo.SysRole">
+               select *
+               <!-- 包含id为 queryWhereId的sql元素-->
+               <include refid="queryWhereId"/>
+               order by createdTime
+               limit #{startIndex},#{pageSize}
+       </select>
+       
+       <!-- 按条件查询总记录数 -->
+       <select id="getRowCount" resultType="int">
+          select count(*)
+          <include refid="queryWhereId"/>
+       </select>
+  </mapper>

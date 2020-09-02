@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cy.pj.sys.dao.SysLogDao">
+
+	<insert id="insertObject">
+		insert into sys_logs
+		(username,operation,method,params,time,ip,createdTime)
+		values
+		(#{username},#{operation},#{method},#{params},#{time},#{ip},#{createdTime})
+	</insert>
+
+	<!-- 基于id删除日志信息 -->
+
+	<delete id="deleteObjects">
+		delete from sys_logs
+		<where>
+			<choose><!-- 选择分支 -->
+				<when test="ids!=null and ids.length>0">
+					id in
+					<foreach collection="ids" open="(" close=")" separator=","
+						item="id">
+						#{id}
+					</foreach>
+				</when>
+				<otherwise><!-- when表达式返回值为false会执行otherwise -->
+					1=2
+				</otherwise>
+			</choose>
+		</where>
+	</delete>
+
+
+	<!-- 删除方式1 <delete id="deleteObjects"> delete from sys_logs <where> <if 
+		test="ids!=null and ids.length>0"> id in <foreach collection="ids" open="(" 
+		close=")" separator="," item="id"> #{id} </foreach> </if> or 1=2 </where> 
+		</delete> -->
+
+
+	<!-- 查询当前页记录总数 -->
+	<select id="findPageObjects"
+		resultType="com.cy.pj.sys.pojo.SysLog">
+		select *
+		from sys_logs
+		<if test="username!=null and username!=''">
+			<where>
+				username like concat("%",#{username},"%")
+			</where>
+		</if>
+		order by createdTime desc
+	</select>
+
+</mapper>
